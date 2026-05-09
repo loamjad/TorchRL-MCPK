@@ -1,7 +1,9 @@
 import numpy as np
+import math
 
 from src.sim.util.axis_aligned_bb import AxisAlignedBB
 from src.sim.entity.data_watcher import DataWatcher
+from src.sim.util.math_helper import MathHelper
 
 
 class Entity:
@@ -114,22 +116,6 @@ class Entity:
         self.motion_x += strafe * cos_yaw - forward * sin_yaw
         self.motion_z += forward * cos_yaw + strafe * sin_yaw
 
-    def move_entity_with_heading(self, strafe, forward):
-        if self.on_ground:
-            friction = np.float64(0.1)
-            drag = np.float64(0.91) * np.float64(0.6)
-        else:
-            friction = np.float64(0.02)
-            drag = np.float64(0.91)
-
-        self.move_flying(strafe, forward, friction)
-        self.motion_y -= np.float64(0.08)
-        self.move_entity(self.motion_x, self.motion_y, self.motion_z)
-
-        self.motion_y *= np.float64(0.98)
-        self.motion_x *= drag
-        self.motion_z *= drag
-
     def on_update(self):
         self.on_entity_update()
 
@@ -147,7 +133,11 @@ class Entity:
         #     self.set_on_fire_from_lava()
         #     self.fall_distance *= np.float32(0.5)
 
-        
+    def is_sprinting(self):
+        return self.get_flag(3)
+    
+    def get_flag(self, flag):
+        return self.get_watchable_object_bye(0) & 1 << flag != 0
 
     def on_living_update(self):
         if self.jump_ticks > 0:
@@ -166,3 +156,20 @@ class Entity:
         move_forward = (1.0 if self.input.get_forward() else 0.0) - (1.0 if self.input.get_backward() else 0.0)
         move_strafe = (1.0 if self.input.get_left() else 0.0) - (1.0 if self.input.get_right() else 0.0)
         self.move_entity_with_heading(move_strafe, move_forward)
+
+    def move_flying(self, strafe, forward, friction):
+        f = np.float32(strafe * strafe + forward * forward)
+
+        if f >= np.float32(1.0E-4):
+            f = MathHelper.sqrt_float(f)
+
+            if f < np.float32(1.0):
+                f = np.float32(1.0)
+
+            f = friction / f
+            strafe = strafe * f
+            forward = forward * f
+            f1 = MathHelper.sin(self.rotation_yaw * np.float32(math.pi) / np.float32(180.0))
+            f2 = MathHelper.cos(self.rotation_yaw * np.float32(math.pi) / np.float32(180.0))
+            self.motion_x += np.float64(strafe * f2 - forward * f1)
+            self.motion_z += np.float64(forward * f2 + strafe * f1)
