@@ -1,14 +1,12 @@
-import struct
 import numpy as np
 import math
 
 
 class MathHelper:
-    SIN_TABLE = None
 
     @classmethod
     def _static_init(cls):
-        cls.SIN_TABLE = np.sin(np.arange(65536, dtype=np.float64) * np.pi * np.float64(2.0) / np.float64(65536.0)).astype(np.float32)
+        MathHelper.SIN_TABLE = np.sin(np.arange(65536, dtype=np.float64) * np.pi * np.float64(2.0) / np.float64(65536.0)).astype(np.float32)
 
     @staticmethod
     def sin(value: np.float32) -> np.float32:
@@ -21,5 +19,5 @@ class MathHelper:
     @staticmethod
     def sqrt_float(value):
         return np.float32(math.sqrt(np.float64(value)))
-    
+
 MathHelper._static_init()
