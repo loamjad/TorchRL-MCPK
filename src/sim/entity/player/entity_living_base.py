@@ -1,10 +1,11 @@
-import numpy as np
 from src.sim.entity.entity import Entity
 from src.sim.util.math_helper import MathHelper
+
 
 class EntityLivingBase(Entity):
     def __init__(self):
         super().__init__()
+<<<<<<< HEAD
         self.is_jumping = False
         self.jump_ticks = 0
         self.move_strafing = np.float32(0.0)
@@ -69,3 +70,12 @@ class EntityLivingBase(Entity):
             pass
 
         return super().move_entity_with_heading(strafe, forward)
+=======
+        self.jump_ticks = 0
+    
+    def on_update(self):
+        self.last_tick_pos_x = self.pos_x
+        self.last_tick_pos_y = self.pos_y
+        self.last_tick_pos_z = self.pos_z
+        self.on_living_update()
+>>>>>>> 01f7beb6a21a8ae274b00b55083c90b9336c2487
