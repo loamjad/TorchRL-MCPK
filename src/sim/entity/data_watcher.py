@@ -1,5 +1,3 @@
-from src.sim.entity.entity import Entity
-
 class DataWatcher:
     def __init__(self, owner):
         self.data_types = {}
