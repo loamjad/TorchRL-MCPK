@@ -1,3 +1,5 @@
+import numpy as np
+
 class DataWatcher:
     def __init__(self, owner):
         self.data_types = {}
@@ -18,32 +20,38 @@ class DataWatcher:
             # TODO: throw new IllegalArgumentException("Duplicate id value for " + id + "!");
             pass
         else:
-            datawatcher_watchableobject = WatchableObject(integer, id, object)
+            datawatcher_watchableobject = DataWatcher.WatchableObject(integer, id, object)
             self.watched_objects[id] = datawatcher_watchableobject
             self.is_blank = False
 
-        class WatchableObject:
-            def __init__(self, type, id, object):
-                self.data_value_id = id
-                self.watched_object = object
-                self.object_type = type
-                self.watched = True
+    def get_watchable_object_byte(self, id):
+        return np.int8(id).get_object()
+    
+    def get_watched_object(self, id):
+        try:
+            datawatcher_watchableobject = self.watched_objects.get(id)
+        except:
+            pass
 
-            def get_data_value_id(self):
-                return self.data_value_id
-            
-            def set_object(self, object):
-                self.watched_object = object
-
-            def get_object():
-                return self.watched_object
-            
-            def get_object_type(self):
-                return self.object_type
-            
-            def is_watched(self):
-                return self.watched
-
-            def set_watched(self, watched):
-                self.watched = watched
+    class WatchableObject:
+        def __init__(self, type, id, object):
+            self.data_value_id = id
+            self.watched_object = object
+            self.object_type = type
+            self.watched = True
+        def get_data_value_id(self):
+            return self.data_value_id
+        
+        def set_object(self, object):
+            self.watched_object = object
+        def get_object():
+            return self.watched_object
+        
+        def get_object_type(self):
+            return self.object_type
+        
+        def is_watched(self):
+            return self.watched
+        def set_watched(self, watched):
+            self.watched = watched
             

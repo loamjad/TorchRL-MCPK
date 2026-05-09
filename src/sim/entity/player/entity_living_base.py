@@ -2,6 +2,7 @@ import numpy as np
 
 from src.sim.entity.entity import Entity
 from src.sim.util.math_helper import MathHelper
+from src.sim.util.block_pos import BlockPos
 
 
 class EntityLivingBase(Entity):
@@ -13,11 +14,8 @@ class EntityLivingBase(Entity):
         self.move_forward = np.float32(0.0)
         self.random_yaw_velocity = np.float32(0.0)
         self.jump_movement_factor = np.float32(0.02)
-        self.land_movement_factor = np.float32(0.0)
+        self.land_movement_factor = np.float64(0.10000000149011612)
         self.step_height = np.float32(0.6)
-    
-    def is_sprinting(self) -> bool:
-        return False
 
     def get_jump_upwards_motion(self) -> np.float32:
         return np.float32(0.42)
@@ -41,11 +39,6 @@ class EntityLivingBase(Entity):
         if self.jump_ticks > 0:
             self.jump_ticks -= 1
 
-        # TODO: Is this needed?
-        # self.motion_x *= np.float64(0.98)
-        # self.motion_y *= np.float64(0.98)
-        # self.motion_z *= np.float64(0.98)
-
         threshold = np.float64(0.005)
         if np.abs(self.motion_x) < threshold:
             self.motion_x = np.float64(0.0)
@@ -53,6 +46,8 @@ class EntityLivingBase(Entity):
             self.motion_y = np.float64(0.0)
         if np.abs(self.motion_z) < threshold:
             self.motion_z = np.float64(0.0)
+
+        self.update_entity_action_state() # TODO: Remove this?
 
         if self.is_jumping:
             if self.on_ground and self.jump_ticks == 0:
@@ -63,14 +58,22 @@ class EntityLivingBase(Entity):
 
         self.move_strafing *= np.float32(0.98)
         self.move_forward *= np.float32(0.98)
-        self.random_yaw_velocity = np.float32(self.random_yaw_velocity * np.float32(0.9))
+        self.random_yaw_velocity *= np.float32(0.9)
         self.move_entity_with_heading(self.move_strafing, self.move_forward)
 
     def move_entity_with_heading(self, strafe, forward):
         f4 = np.float32(0.91)
 
-        if self.on_ground:
-            f4 = np.float32(1.0) # TODO: Find value
+        # if self.on_ground:
+        #     f4 = self.world_obj.get_block_state(
+        #         BlockPos(
+        #             MathHelper.floor_double(self.pos_x),
+        #             MathHelper.floor_double(self.get_entity_bounding_box().min_y) - 1,
+        #             MathHelper.floor_double(self.pos_z)
+        #             )
+        #     ).get_block().slipperiness * np.float32(0.91)
+
+        f4 = np.float32(0.6) * np.float32(0.91) # TODO: Remove once implement above
 
         f = np.float32(0.16277136) / (f4 * f4 * f4)
 
@@ -88,17 +91,17 @@ class EntityLivingBase(Entity):
 
         self.move_entity(self.motion_x, self.motion_y, self.motion_z)
 
-        if False: # TODO: this.worldObj.isRemote && (!this.worldObj.isBlockLoaded(new BlockPos((int)this.posX, 0, (int)this.posZ)) || !this.worldObj.getChunkFromBlockCoords(new BlockPos((int)this.posX, 0, (int)this.posZ)).isLoaded()))
-            pass
-        else:
-            self.motion_y -= np.float64(0.08)
+        self.motion_y -= np.float64(0.08)
 
         self.motion_y *= np.float64(0.9800000190734863)
         self.motion_x *= np.float64(f4)
         self.motion_z *= np.float64(f4)
     
     def get_AI_move_speed(self):
-        return self.land_movement_factor
+        return np.float32(self.land_movement_factor)
     
     def set_AI_move_speed(self, speed_in):
         self.land_movement_factor = speed_in
+
+    def update_entity_action_state(self):
+        pass

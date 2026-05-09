@@ -19,5 +19,10 @@ class MathHelper:
     @staticmethod
     def sqrt_float(value):
         return np.float32(math.sqrt(np.float64(value)))
+    
+    @staticmethod
+    def floor_double(value):
+        i = int(value)
+        return i - 1 if value < np.float64(i) else i
 
 MathHelper._static_init()

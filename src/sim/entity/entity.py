@@ -10,6 +10,8 @@ class Entity:
     def __init__(self):
         ZERO_AABB = AxisAlignedBB(np.float64(0.0), np.float64(0.0), np.float64(0.0), np.float64(0.0), np.float64(0.0), np.float64(0.0))
 
+        self.world_obj = None
+
         self.bounding_box = ZERO_AABB
         self.width = np.float32(0.6)
         self.height = np.float32(1.8)
@@ -70,51 +72,51 @@ class Entity:
         self.bounding_box = bb
 
     def get_jump_upwards_motion(self):
-        return 0.42
+        return np.float32(0.42)
 
     def jump(self):
         self.motion_y = self.get_jump_upwards_motion()
         self.is_air_borne = True
 
     def move_entity(self, x, y, z):
-        # TODO(sim): Resolve motion against Course collision instead of only using
-        # a flat floor. The TorchRL env already routes reward through Course.
-        self.is_collided_horizontally = False
-        self.is_collided_vertically = False
+        d0 = self.pos_x
+        d1 = self.pos_y
+        d2 = self.pos_z
 
-        next_y = self.pos_y + y
-        if next_y <= 0.0:
-            y = -self.pos_y
-            self.motion_y = np.float64(0.0)
-            self.on_ground = True
-            self.is_collided_vertically = True
-        else:
-            self.on_ground = False
+        d3 = x
+        d4 = y
+        d5 = z
+        flag = self.on_ground and self.is_sneaking
 
-        self.set_position(self.pos_x + x, self.pos_y + y, self.pos_z + z)
-        self.is_collided = (
-            self.is_collided_horizontally or self.is_collided_vertically
-        )
+        if flag:
+            d6 = np.float64(0.0)
+
+        axisalignedbb = self.get_entity_bounding_box()
+
+        self.set_entity_bounding_box(self.get_entity_bounding_box().offset(np.float64(0.0), y, np.float64(0.0)))
+
+        self.set_entity_bounding_box(self.get_entity_bounding_box().offset(x, np.float64(0.0), np.float64(0.0)))
+
+        self.set_entity_bounding_box(self.get_entity_bounding_box().offset(np.float64(0.0), np.float64(0.0), z))
+
+        self.reset_position_to_BB()
 
     def move_flying(self, strafe, forward, friction):
-        strafe = np.float64(strafe)
-        forward = np.float64(forward)
-        speed = strafe * strafe + forward * forward
-        if speed < 1.0e-4:
-            return
+        f = np.float32(strafe * strafe + forward * forward)
 
-        speed = np.sqrt(speed)
-        if speed < 1.0:
-            speed = 1.0
-        scale = np.float64(friction) / speed
-        strafe *= scale
-        forward *= scale
+        if f >= np.float32(1.0E-4):
+            f = MathHelper.sqrt_float(f)
 
-        yaw = np.deg2rad(self.rotation_yaw)
-        sin_yaw = np.sin(yaw)
-        cos_yaw = np.cos(yaw)
-        self.motion_x += strafe * cos_yaw - forward * sin_yaw
-        self.motion_z += forward * cos_yaw + strafe * sin_yaw
+            if f < np.float32(1.0):
+                f = np.float32(1.0)
+
+            f = friction / f
+            strafe = strafe * f
+            forward = forward * f
+            f1 = MathHelper.sin(self.rotation_yaw * np.float32(math.pi) / np.float32(180.0))
+            f2 = MathHelper.cos(self.rotation_yaw * np.float32(math.pi) / np.float32(180.0))
+            self.motion_x += np.float64(strafe * f2 - forward * f1)
+            self.motion_z += np.float64(forward * f2 + strafe * f1)
 
     def on_update(self):
         self.on_entity_update()
@@ -136,40 +138,19 @@ class Entity:
     def is_sprinting(self):
         return self.get_flag(3)
     
+    def is_sneaking(self):
+        return self.get_flag(1)
+    
     def get_flag(self, flag):
         return self.get_watchable_object_bye(0) & 1 << flag != 0
 
-    def on_living_update(self):
-        if self.jump_ticks > 0:
-            self.jump_ticks -= 1
+    def get_entity_bounding_box(self):
+        return self.bounding_box
+    
+    def set_entity_bounding_box(self, bb):
+        self.bounding_box = bb
 
-        if abs(self.motion_y) < 0.005:
-            self.motion_y = np.float64(0.0)
-
-        if self.input.get_jump():
-            if self.on_ground and self.jump_ticks == 0:
-                self.jump()
-                self.jump_ticks = 10
-        else:
-            self.jump_ticks = 0
-
-        move_forward = (1.0 if self.input.get_forward() else 0.0) - (1.0 if self.input.get_backward() else 0.0)
-        move_strafe = (1.0 if self.input.get_left() else 0.0) - (1.0 if self.input.get_right() else 0.0)
-        self.move_entity_with_heading(move_strafe, move_forward)
-
-    def move_flying(self, strafe, forward, friction):
-        f = np.float32(strafe * strafe + forward * forward)
-
-        if f >= np.float32(1.0E-4):
-            f = MathHelper.sqrt_float(f)
-
-            if f < np.float32(1.0):
-                f = np.float32(1.0)
-
-            f = friction / f
-            strafe = strafe * f
-            forward = forward * f
-            f1 = MathHelper.sin(self.rotation_yaw * np.float32(math.pi) / np.float32(180.0))
-            f2 = MathHelper.cos(self.rotation_yaw * np.float32(math.pi) / np.float32(180.0))
-            self.motion_x += np.float64(strafe * f2 - forward * f1)
-            self.motion_z += np.float64(forward * f2 + strafe * f1)
+    def reset_position_to_BB(self):
+        self.pos_x = (self.get_entity_bounding_box().min_x + self.get_entity_bounding_box().max_x) / np.float64(2.0)
+        self.pos_y = self.get_entity_bounding_box().min_y
+        self.pos_z = (self.get_entity_bounding_box().min_z + self.get_entity_bounding_box().max_z) / np.float64(2.0)

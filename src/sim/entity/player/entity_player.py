@@ -21,5 +21,8 @@ class EntityPlayer(EntityLivingBase):
 
         self.set_AI_move_speed(np.float64(0.10000000149011612))
 
+    def update_entity_action_state(self):
+        super().update_entity_action_state()
+
     
 
