@@ -1,11 +1,25 @@
 import numpy as np
+
 from src.sim.util.axis_aligned_bb import AxisAlignedBB
+from src.sim.entity.data_watcher import DataWatcher
 
 
 class Entity:
     def __init__(self):
+        ZERO_AABB = AxisAlignedBB(np.float64(0.0), np.float64(0.0), np.float64(0.0), np.float64(0.0), np.float64(0.0), np.float64(0.0))
+
+        self.bounding_box = ZERO_AABB
         self.width = np.float32(0.6)
         self.height = np.float32(1.8)
+        self.nextStepDistance = 1
+        self.set_position(np.float64(0.0), np.float64(0.0), np.float64(0.0))
+
+        self.data_watcher = DataWatcher(self)
+        self.data_watcher.add_object(0, np.int8(0))
+        self.data_watcher.add_object(1, np.int16(300))
+        self.data_watcher.add_object(3, np.int8(0))
+        self.data_watcher.add_object(2, "")
+        self.data_watcher.add_object(4, np.int8(0))
 
         self.pos_x = np.float64(0.0)
         self.pos_y = np.float64(0.0)
@@ -24,11 +38,7 @@ class Entity:
         self.last_tick_pos_y = np.float64(0.0)
         self.last_tick_pos_z = np.float64(0.0)
         self.is_air_borne = False
-        self.bounding_box = None
-        self.set_position(np.float64(0.0), np.float64(0.0), np.float64(0.0))
 
-<<<<<<< HEAD
-        self.bounding_box = None
         self.prev_pos_x = np.float64(0.0)
         self.prev_pos_y = np.float64(0.0)
         self.prev_pos_z = np.float64(0.0)
@@ -37,8 +47,6 @@ class Entity:
         self.distance_walked_modified = np.float32(0.0)
         self.prev_distance_walked_modified = np.float32(0.0)
 
-=======
->>>>>>> 01f7beb6a21a8ae274b00b55083c90b9336c2487
     def set_position(self, x, y, z):
         self.pos_x = x
         self.pos_y = y
@@ -56,13 +64,8 @@ class Entity:
             )
         )
 
-<<<<<<< HEAD
     def set_entity_bounding_box(self, bb: AxisAlignedBB):
         self.bounding_box = bb
-=======
-    def set_entity_bounding_box(self, bounding_box):
-        self.bounding_box = bounding_box
->>>>>>> 01f7beb6a21a8ae274b00b55083c90b9336c2487
 
     def get_jump_upwards_motion(self):
         return 0.42
