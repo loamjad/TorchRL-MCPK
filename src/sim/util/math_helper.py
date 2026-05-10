@@ -24,5 +24,9 @@ class MathHelper:
     def floor_double(value):
         i = int(value)
         return i - 1 if value < np.float64(i) else i
+    
+    @staticmethod
+    def clamp_double(num, min, max):
+        return min if num < min else (max if num > max else num)
 
 MathHelper._static_init()

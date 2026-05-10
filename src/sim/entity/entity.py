@@ -134,15 +134,29 @@ class Entity:
         # if self.is_in_lava():
         #     self.set_on_fire_from_lava()
         #     self.fall_distance *= np.float32(0.5)
-
-    def is_sprinting(self):
-        return self.get_flag(3)
     
     def is_sneaking(self):
         return self.get_flag(1)
     
+    def set_sneaking(self, sneaking):
+        self.set_flag(1, sneaking)
+    
+    def is_sprinting(self):
+        return self.get_flag(3)
+    
+    def set_sprinting(self, sprinting):
+        self.set_flag(3, sprinting)
+    
     def get_flag(self, flag):
-        return self.get_watchable_object_bye(0) & 1 << flag != 0
+        return self.data_watcher.get_watchable_object_byte(0) & 1 << flag != 0
+    
+    def set_flag(self, flag, set):
+        b0 = self.data_watcher.get_watchable_object_byte(0)
+
+        if set:
+            self.data_watcher.update_object(0, np.int8(b0 | 1 << flag))
+        else:
+            self.data_watcher.update_object(0, np.int8(b0 & ~(1 << flag)))
 
     def get_entity_bounding_box(self):
         return self.bounding_box

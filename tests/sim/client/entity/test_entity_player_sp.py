@@ -8,7 +8,7 @@ def make_player():
     player = EntityPlayerSP()
     return player
 
-def set_pressed_keys(player, w, a, s, d, jump, sneak):
+def set_pressed_keys(player, w, a, s, d, jump, sneak, sprint):
     settings = player.movement_input.game_settings()
     settings.key_bind_forward.pressed = w
     settings.key_bind_left.pressed = a
@@ -16,6 +16,8 @@ def set_pressed_keys(player, w, a, s, d, jump, sneak):
     settings.key_bind_right.pressed = d
     settings.key_bind_jump.pressed = jump
     settings.key_bind_sneak.pressed = sneak
+    settings.key_bind_sprint.pressed = sprint
+
 class TestOnLivingUpdate:
     def test_movement(self):
         player = make_player()
@@ -27,7 +29,9 @@ class TestOnLivingUpdate:
             False, 
             False, 
             True, 
-            False)
+            True,
+            True
+        )
 
         player.on_update()
         print(player.pos_z)

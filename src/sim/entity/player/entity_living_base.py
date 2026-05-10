@@ -1,13 +1,22 @@
 import numpy as np
+import uuid
 
 from src.sim.entity.entity import Entity
 from src.sim.util.math_helper import MathHelper
 from src.sim.util.block_pos import BlockPos
+from src.sim.entity.ai.attributes.serverside_attribute_map import ServersideAttributeMap
+from src.sim.entity.ai.attributes.attribute_modifier import AttributeModifier
+from src.sim.entity.shared_monster_attributes import SharedMonsterAttributes
 
 
 class EntityLivingBase(Entity):
     def __init__(self):
         super().__init__()
+        self.attribute_map = None
+        self.sprinting_speed_boost_modifier_UUID = uuid.UUID("662A6B8D-DA3E-4C1C-8813-96EA6097278D")
+        self.sprinting_speed_boost_modifier = AttributeModifier(self.sprinting_speed_boost_modifier_UUID, "Sprinting spped boost", np.float64(0.30000001192092896), 2).set_saved(False)
+        
+        self.apply_entity_attributes()
         self.is_jumping = False
         self.jump_ticks = 0
         self.move_strafing = np.float32(0.0)
@@ -98,10 +107,29 @@ class EntityLivingBase(Entity):
         self.motion_z *= np.float64(f4)
     
     def get_AI_move_speed(self):
-        return np.float32(self.land_movement_factor)
+        return np.float32(self.get_entity_attribute(SharedMonsterAttributes.movement_speed).get_attribute_value())
     
     def set_AI_move_speed(self, speed_in):
         self.land_movement_factor = speed_in
 
     def update_entity_action_state(self):
         pass
+
+    def set_sprinting(self, sprinting):
+        super().set_sprinting(sprinting)
+        iattributeinstance = self.get_entity_attribute(SharedMonsterAttributes.movement_speed)
+
+        if sprinting:
+            iattributeinstance.apply_modifier(self.sprinting_speed_boost_modifier)
+    
+    def get_entity_attribute(self, attribute):
+        return self.get_attribute_map().get_attribute_instance(attribute)
+    
+    def get_attribute_map(self):
+        if self.attribute_map == None:
+            self.attribute_map = ServersideAttributeMap()
+
+        return self.attribute_map
+    
+    def apply_entity_attributes(self):
+        self.get_attribute_map().register_attribute(SharedMonsterAttributes.movement_speed)
