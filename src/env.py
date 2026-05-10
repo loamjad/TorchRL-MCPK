@@ -6,7 +6,7 @@ from tensordict import TensorDict
 from torchrl.data import Bounded, Composite, Unbounded
 from torchrl.envs import EnvBase
 
-from src.sim.entity.player.entity_player_mp import EntityPlayerMP
+from src.agent import Agent
 
 
 class Course:
@@ -89,36 +89,6 @@ class Course:
         return (int(x), int(y), int(z))
 
 
-class PlayerInput:
-    def __init__(self):
-        self.forward = False
-        self.backward = False
-        self.left = False
-        self.right = False
-        self.jump = False
-
-    def set_from_action(self, action):
-        self.forward = bool(action[0] > 0.5)
-        self.backward = bool(action[1] > 0.5)
-        self.left = bool(action[2] > 0.5)
-        self.right = bool(action[3] > 0.5)
-        self.jump = bool(action[4] > 0.5)
-
-    def get_forward(self):
-        return self.forward
-
-    def get_backward(self):
-        return self.backward
-
-    def get_left(self):
-        return self.left
-
-    def get_right(self):
-        return self.right
-
-    def get_jump(self):
-        return self.jump
-
 
 class MinecraftTorchRLEnv(EnvBase):
     """A tick-based Minecraft-style player movement environment for TorchRL.
@@ -171,7 +141,7 @@ class MinecraftTorchRLEnv(EnvBase):
         self.goal_reward = float(goal_reward)
         self.time_penalty = float(time_penalty)
         self.rng = torch.Generator(device=self.device)
-        self.player = None
+        self.agent = None
         self.tick_count = 0
         self.previous_distance_to_finish = 0.0
         self._make_specs()
@@ -211,22 +181,28 @@ class MinecraftTorchRLEnv(EnvBase):
         self.rng.manual_seed(seed)
 
     def _reset(self, tensordict=None, **kwargs):
-        self.player = EntityPlayerMP()
-        self.player.input = PlayerInput()
-        self.player.on_ground = True
-        self.player.set_position(*self.start_position)
+        self.agent = Agent()
+        self.agent.set_position(*self.start_position)
         self.tick_count = 0
         self.previous_distance_to_finish = self._distance_to_finish()
         return self._make_tensordict()
 
     def _step(self, tensordict):
-        if self.player is None:
+        if self.agent is None:
             self._reset()
 
         action = tensordict.get("action").detach().to("cpu").float().numpy()
-        self.player.input.set_from_action(action)
+        self.agent.set_inputs({
+            "w":      bool(action[0] > 0.5),
+            "s":      bool(action[1] > 0.5),
+            "a":      bool(action[2] > 0.5),
+            "d":      bool(action[3] > 0.5),
+            "jump":   bool(action[4] > 0.5),
+            "sneak":  False,
+            "sprint": False,
+        })
         self._apply_look(action[5], action[6])
-        self.player.on_update()
+        self.agent.run_tick()
         self.tick_count += 1
 
         reward = self._reward()
@@ -239,49 +215,19 @@ class MinecraftTorchRLEnv(EnvBase):
         return out
 
     def _apply_look(self, yaw_action, pitch_action):
-        self.player.rotation_yaw = np.float32(
-            self._wrap_degrees(
-                self.player.rotation_yaw + (float(yaw_action) * self.max_yaw_delta)
-            )
-        )
-        self.player.rotation_pitch = np.float32(
-            np.clip(
-                self.player.rotation_pitch
-                + (float(pitch_action) * self.max_pitch_delta),
-                -90.0,
-                90.0,
-            )
+        yaw, pitch = self.agent.get_rotation()
+        self.agent.set_rotation(
+            np.float32(self._wrap_degrees(yaw + float(yaw_action) * self.max_yaw_delta)),
+            np.float32(np.clip(pitch + float(pitch_action) * self.max_pitch_delta, -90.0, 90.0)),
         )
 
     def _make_tensordict(self):
-        position = torch.tensor(
-            [self.player.pos_x, self.player.pos_y, self.player.pos_z],
-            dtype=torch.float32,
-            device=self.device,
-        )
-        finish_position = torch.tensor(
-            self.finish_position,
-            dtype=torch.float32,
-            device=self.device,
-        )
-        distance_to_finish = torch.tensor(
-            [self._distance_to_finish()],
-            dtype=torch.float32,
-            device=self.device,
-        )
-        motion = torch.tensor(
-            [self.player.motion_x, self.player.motion_y, self.player.motion_z],
-            dtype=torch.float32,
-            device=self.device,
-        )
-        rotation = torch.tensor(
-            [self.player.rotation_yaw, self.player.rotation_pitch],
-            dtype=torch.float32,
-            device=self.device,
-        )
-        on_ground = torch.tensor(
-            [self.player.on_ground], dtype=torch.bool, device=self.device
-        )
+        position = torch.tensor(self.agent.get_pos(), dtype=torch.float32, device=self.device)
+        finish_position = torch.tensor(self.finish_position, dtype=torch.float32, device=self.device)
+        distance_to_finish = torch.tensor([self._distance_to_finish()], dtype=torch.float32, device=self.device)
+        motion = torch.tensor(self.agent.get_motion(), dtype=torch.float32, device=self.device)
+        rotation = torch.tensor(self.agent.get_rotation(), dtype=torch.float32, device=self.device)
+        on_ground = torch.zeros(1, dtype=torch.bool, device=self.device)
         tick = torch.tensor([self.tick_count], dtype=torch.int64, device=self.device)
         observation = torch.cat(
             (
@@ -293,12 +239,7 @@ class MinecraftTorchRLEnv(EnvBase):
                 on_ground.to(torch.float32),
                 tick.to(torch.float32),
                 torch.tensor(
-                    [
-                        self.player.last_tick_pos_x,
-                        self.player.last_tick_pos_y,
-                        self.player.last_tick_pos_z,
-                        self.dt,
-                    ],
+                    [*self.agent.get_last_tick_pos(), self.dt],
                     dtype=torch.float32,
                     device=self.device,
                 ),
@@ -341,10 +282,7 @@ class MinecraftTorchRLEnv(EnvBase):
         )
 
     def _distance_to_finish(self):
-        position = np.asarray(
-            [self.player.pos_x, self.player.pos_y, self.player.pos_z],
-            dtype=np.float64,
-        )
+        position = np.asarray(self.agent.get_pos(), dtype=np.float64)
         distance = self.course.distance_to_finish(position, self.finish_position)
         if distance is None:
             return self.unreachable_distance
@@ -358,4 +296,4 @@ class MinecraftTorchRLEnv(EnvBase):
         return ((value + 180.0) % 360.0) - 180.0
 
 
-__all__ = ["Course", "MinecraftTorchRLEnv", "PlayerInput"]
+__all__ = ["Course", "MinecraftTorchRLEnv"]

@@ -8,7 +8,7 @@ class EntityPlayerSP(AbstractClientPlayer):
 
     def __init__(self):
         super().__init__()
-        self.movement_input = MovementInputFromOptions(GameSettings)
+        self.movement_input = MovementInputFromOptions(GameSettings())
 
     def on_living_update(self):
         flag = self.movement_input.jump
@@ -17,7 +17,7 @@ class EntityPlayerSP(AbstractClientPlayer):
         flag2 = self.movement_input.move_forward >= f
         self.movement_input.update_player_move_state()
 
-        if not self.is_sprinting() and self.movement_input.move_forward >= f and GameSettings.key_bind_sprint.is_key_down():
+        if not self.is_sprinting() and self.movement_input.move_forward >= f and self.movement_input.game_settings.key_bind_sprint.is_key_down():
             self.set_sprinting(True)
 
         super().on_living_update()

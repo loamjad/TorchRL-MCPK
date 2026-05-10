@@ -9,7 +9,7 @@ def make_player():
     return player
 
 def set_pressed_keys(player, w, a, s, d, jump, sneak, sprint):
-    settings = player.movement_input.game_settings()
+    settings = player.movement_input.game_settings
     settings.key_bind_forward.pressed = w
     settings.key_bind_left.pressed = a
     settings.key_bind_back.pressed = s
